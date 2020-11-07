@@ -235,6 +235,7 @@ public class Proxy implements java.io.Serializable {
 
     /**
      * a cache of proxy classes
+     * 缓存已经创建过的代理类
      */
     private static final WeakCache<ClassLoader, Class<?>[], Class<?>>
         proxyClassCache = new WeakCache<>(new KeyFactory(), new ProxyClassFactory());
@@ -406,6 +407,8 @@ public class Proxy implements java.io.Serializable {
     /**
      * Generate a proxy class.  Must call the checkProxyAccess method
      * to perform permission checks before calling this.
+     * 
+     * 完成代理类的生成和加载
      */
     private static Class<?> getProxyClass0(ClassLoader loader,
                                            Class<?>... interfaces) {
@@ -416,6 +419,8 @@ public class Proxy implements java.io.Serializable {
         // If the proxy class defined by the given loader implementing
         // the given interfaces exists, this will simply return the cached copy;
         // otherwise, it will create the proxy class via the ProxyClassFactory
+        //如果指定的类加载器中已经创建了实现指定接口的代理类，则查找缓存
+        //否则通过ProxyClassFactory创建实现指定接口的代理类
         return proxyClassCache.get(loader, interfaces);
     }
 
@@ -635,10 +640,12 @@ public class Proxy implements java.io.Serializable {
 
             /*
              * Generate the specified proxy class.
+             * 生成代理类，并写入文件
              */
             byte[] proxyClassFile = ProxyGenerator.generateProxyClass(
                 proxyName, interfaces, accessFlags);
             try {
+                //加载代理类，并返回Class对象
                 return defineClass0(loader, proxyName,
                                     proxyClassFile, 0, proxyClassFile.length);
             } catch (ClassFormatError e) {
@@ -698,6 +705,8 @@ public class Proxy implements java.io.Serializable {
      *          argument or any of its elements are {@code null}, or
      *          if the invocation handler, {@code h}, is
      *          {@code null}
+     * 
+     * jdk动态代理的实现入口
      */
     @CallerSensitive
     public static Object newProxyInstance(ClassLoader loader,
@@ -716,7 +725,7 @@ public class Proxy implements java.io.Serializable {
         /*
          * Look up or generate the designated proxy class.
          */
-        Class<?> cl = getProxyClass0(loader, intfs);
+        Class<?> cl = getProxyClass0(loader, intfs); //获取代理类
 
         /*
          * Invoke its constructor with the designated invocation handler.
@@ -726,6 +735,7 @@ public class Proxy implements java.io.Serializable {
                 checkNewProxyPermission(Reflection.getCallerClass(), cl);
             }
 
+            //获取代理类的构造方法
             final Constructor<?> cons = cl.getConstructor(constructorParams);
             final InvocationHandler ih = h;
             if (!Modifier.isPublic(cl.getModifiers())) {
@@ -736,7 +746,7 @@ public class Proxy implements java.io.Serializable {
                     }
                 });
             }
-            return cons.newInstance(new Object[]{h});
+            return cons.newInstance(new Object[]{h});  //创建代理对象
         } catch (IllegalAccessException|InstantiationException e) {
             throw new InternalError(e.toString(), e);
         } catch (InvocationTargetException e) {

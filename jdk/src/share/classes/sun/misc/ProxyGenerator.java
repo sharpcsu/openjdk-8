@@ -318,6 +318,7 @@ public class ProxyGenerator {
 
     /**
      * Generate a public proxy class given a name and a list of proxy interfaces.
+     * 生成接口类的字节码
      */
     public static byte[] generateProxyClass(final String name,
                                             Class<?>[] interfaces) {
@@ -336,8 +337,10 @@ public class ProxyGenerator {
                                             int accessFlags)
     {
         ProxyGenerator gen = new ProxyGenerator(name, interfaces, accessFlags);
+        //动态生成代理类的字节码
         final byte[] classFile = gen.generateClassFile();
 
+        //生成的代理类的字节码保存在文件中
         if (saveGeneratedFiles) {
             java.security.AccessController.doPrivileged(
             new java.security.PrivilegedAction<Void>() {
@@ -362,6 +365,7 @@ public class ProxyGenerator {
             });
         }
 
+        //返回上面生成的代理类的字节码
         return classFile;
     }
 
