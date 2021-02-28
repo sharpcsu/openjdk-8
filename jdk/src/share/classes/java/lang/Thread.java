@@ -137,8 +137,8 @@ import sun.security.util.SecurityConstants;
  * @see     #stop()
  * @since   JDK1.0
  */
-public
-class Thread implements Runnable {
+//Thread类里持有ThreadLocalMap的引用
+public class Thread implements Runnable {
     /* Make sure registerNatives is the first thing <clinit> does. */
     private static native void registerNatives();
     static {
@@ -184,6 +184,7 @@ class Thread implements Runnable {
     /*
      * InheritableThreadLocal values pertaining to this thread. This map is
      * maintained by the InheritableThreadLocal class.
+     * 持有ThreadLocalMap的引用
      */
     ThreadLocal.ThreadLocalMap inheritableThreadLocals = null;
 

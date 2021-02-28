@@ -73,431 +73,10 @@ import java.util.function.ToLongFunction;
 import java.util.stream.Stream;
 
 /**
- * A hash table supporting full concurrency of retrievals and
- * high expected concurrency for updates. This class obeys the
- * same functional specification as {@link java.util.Hashtable}, and
- * includes versions of methods corresponding to each method of
- * {@code Hashtable}. However, even though all operations are
- * thread-safe, retrieval operations do <em>not</em> entail locking,
- * and there is <em>not</em> any support for locking the entire table
- * in a way that prevents all access.  This class is fully
- * interoperable with {@code Hashtable} in programs that rely on its
- * thread safety but not on its synchronization details.
- *
- * <p>Retrieval operations (including {@code get}) generally do not
- * block, so may overlap with update operations (including {@code put}
- * and {@code remove}). Retrievals reflect the results of the most
- * recently <em>completed</em> update operations holding upon their
- * onset. (More formally, an update operation for a given key bears a
- * <em>happens-before</em> relation with any (non-null) retrieval for
- * that key reporting the updated value.)  For aggregate operations
- * such as {@code putAll} and {@code clear}, concurrent retrievals may
- * reflect insertion or removal of only some entries.  Similarly,
- * Iterators, Spliterators and Enumerations return elements reflecting the
- * state of the hash table at some point at or since the creation of the
- * iterator/enumeration.  They do <em>not</em> throw {@link
- * java.util.ConcurrentModificationException ConcurrentModificationException}.
- * However, iterators are designed to be used by only one thread at a time.
- * Bear in mind that the results of aggregate status methods including
- * {@code size}, {@code isEmpty}, and {@code containsValue} are typically
- * useful only when a map is not undergoing concurrent updates in other threads.
- * Otherwise the results of these methods reflect transient states
- * that may be adequate for monitoring or estimation purposes, but not
- * for program control.
- *
- * <p>The table is dynamically expanded when there are too many
- * collisions (i.e., keys that have distinct hash codes but fall into
- * the same slot modulo the table size), with the expected average
- * effect of maintaining roughly two bins per mapping (corresponding
- * to a 0.75 load factor threshold for resizing). There may be much
- * variance around this average as mappings are added and removed, but
- * overall, this maintains a commonly accepted time/space tradeoff for
- * hash tables.  However, resizing this or any other kind of hash
- * table may be a relatively slow operation. When possible, it is a
- * good idea to provide a size estimate as an optional {@code
- * initialCapacity} constructor argument. An additional optional
- * {@code loadFactor} constructor argument provides a further means of
- * customizing initial table capacity by specifying the table density
- * to be used in calculating the amount of space to allocate for the
- * given number of elements.  Also, for compatibility with previous
- * versions of this class, constructors may optionally specify an
- * expected {@code concurrencyLevel} as an additional hint for
- * internal sizing.  Note that using many keys with exactly the same
- * {@code hashCode()} is a sure way to slow down performance of any
- * hash table. To ameliorate impact, when keys are {@link Comparable},
- * this class may use comparison order among keys to help break ties.
- *
- * <p>A {@link Set} projection of a ConcurrentHashMap may be created
- * (using {@link #newKeySet()} or {@link #newKeySet(int)}), or viewed
- * (using {@link #keySet(Object)} when only keys are of interest, and the
- * mapped values are (perhaps transiently) not used or all take the
- * same mapping value.
- *
- * <p>A ConcurrentHashMap can be used as scalable frequency map (a
- * form of histogram or multiset) by using {@link
- * java.util.concurrent.atomic.LongAdder} values and initializing via
- * {@link #computeIfAbsent computeIfAbsent}. For example, to add a count
- * to a {@code ConcurrentHashMap<String,LongAdder> freqs}, you can use
- * {@code freqs.computeIfAbsent(k -> new LongAdder()).increment();}
- *
- * <p>This class and its views and iterators implement all of the
- * <em>optional</em> methods of the {@link Map} and {@link Iterator}
- * interfaces.
- *
- * <p>Like {@link Hashtable} but unlike {@link HashMap}, this class
- * does <em>not</em> allow {@code null} to be used as a key or value.
- *
- * <p>ConcurrentHashMaps support a set of sequential and parallel bulk
- * operations that, unlike most {@link Stream} methods, are designed
- * to be safely, and often sensibly, applied even with maps that are
- * being concurrently updated by other threads; for example, when
- * computing a snapshot summary of the values in a shared registry.
- * There are three kinds of operation, each with four forms, accepting
- * functions with Keys, Values, Entries, and (Key, Value) arguments
- * and/or return values. Because the elements of a ConcurrentHashMap
- * are not ordered in any particular way, and may be processed in
- * different orders in different parallel executions, the correctness
- * of supplied functions should not depend on any ordering, or on any
- * other objects or values that may transiently change while
- * computation is in progress; and except for forEach actions, should
- * ideally be side-effect-free. Bulk operations on {@link java.util.Map.Entry}
- * objects do not support method {@code setValue}.
- *
- * <ul>
- * <li> forEach: Perform a given action on each element.
- * A variant form applies a given transformation on each element
- * before performing the action.</li>
- *
- * <li> search: Return the first available non-null result of
- * applying a given function on each element; skipping further
- * search when a result is found.</li>
- *
- * <li> reduce: Accumulate each element.  The supplied reduction
- * function cannot rely on ordering (more formally, it should be
- * both associative and commutative).  There are five variants:
- *
- * <ul>
- *
- * <li> Plain reductions. (There is not a form of this method for
- * (key, value) function arguments since there is no corresponding
- * return type.)</li>
- *
- * <li> Mapped reductions that accumulate the results of a given
- * function applied to each element.</li>
- *
- * <li> Reductions to scalar doubles, longs, and ints, using a
- * given basis value.</li>
- *
- * </ul>
- * </li>
- * </ul>
- *
- * <p>These bulk operations accept a {@code parallelismThreshold}
- * argument. Methods proceed sequentially if the current map size is
- * estimated to be less than the given threshold. Using a value of
- * {@code Long.MAX_VALUE} suppresses all parallelism.  Using a value
- * of {@code 1} results in maximal parallelism by partitioning into
- * enough subtasks to fully utilize the {@link
- * ForkJoinPool#commonPool()} that is used for all parallel
- * computations. Normally, you would initially choose one of these
- * extreme values, and then measure performance of using in-between
- * values that trade off overhead versus throughput.
- *
- * <p>The concurrency properties of bulk operations follow
- * from those of ConcurrentHashMap: Any non-null result returned
- * from {@code get(key)} and related access methods bears a
- * happens-before relation with the associated insertion or
- * update.  The result of any bulk operation reflects the
- * composition of these per-element relations (but is not
- * necessarily atomic with respect to the map as a whole unless it
- * is somehow known to be quiescent).  Conversely, because keys
- * and values in the map are never null, null serves as a reliable
- * atomic indicator of the current lack of any result.  To
- * maintain this property, null serves as an implicit basis for
- * all non-scalar reduction operations. For the double, long, and
- * int versions, the basis should be one that, when combined with
- * any other value, returns that other value (more formally, it
- * should be the identity element for the reduction). Most common
- * reductions have these properties; for example, computing a sum
- * with basis 0 or a minimum with basis MAX_VALUE.
- *
- * <p>Search and transformation functions provided as arguments
- * should similarly return null to indicate the lack of any result
- * (in which case it is not used). In the case of mapped
- * reductions, this also enables transformations to serve as
- * filters, returning null (or, in the case of primitive
- * specializations, the identity basis) if the element should not
- * be combined. You can create compound transformations and
- * filterings by composing them yourself under this "null means
- * there is nothing there now" rule before using them in search or
- * reduce operations.
- *
- * <p>Methods accepting and/or returning Entry arguments maintain
- * key-value associations. They may be useful for example when
- * finding the key for the greatest value. Note that "plain" Entry
- * arguments can be supplied using {@code new
- * AbstractMap.SimpleEntry(k,v)}.
- *
- * <p>Bulk operations may complete abruptly, throwing an
- * exception encountered in the application of a supplied
- * function. Bear in mind when handling such exceptions that other
- * concurrently executing functions could also have thrown
- * exceptions, or would have done so if the first exception had
- * not occurred.
- *
- * <p>Speedups for parallel compared to sequential forms are common
- * but not guaranteed.  Parallel operations involving brief functions
- * on small maps may execute more slowly than sequential forms if the
- * underlying work to parallelize the computation is more expensive
- * than the computation itself.  Similarly, parallelization may not
- * lead to much actual parallelism if all processors are busy
- * performing unrelated tasks.
- *
- * <p>All arguments to all task methods must be non-null.
- *
- * <p>This class is a member of the
- * <a href="{@docRoot}/../technotes/guides/collections/index.html">
- * Java Collections Framework</a>.
- *
- * @since 1.5
- * @author Doug Lea
- * @param <K> the type of keys maintained by this map
- * @param <V> the type of mapped values
  */
 public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     implements ConcurrentMap<K,V>, Serializable {
     private static final long serialVersionUID = 7249069246763182397L;
-
-    /*
-     * Overview:
-     *
-     * The primary design goal of this hash table is to maintain
-     * concurrent readability (typically method get(), but also
-     * iterators and related methods) while minimizing update
-     * contention. Secondary goals are to keep space consumption about
-     * the same or better than java.util.HashMap, and to support high
-     * initial insertion rates on an empty table by many threads.
-     *
-     * This map usually acts as a binned (bucketed) hash table.  Each
-     * key-value mapping is held in a Node.  Most nodes are instances
-     * of the basic Node class with hash, key, value, and next
-     * fields. However, various subclasses exist: TreeNodes are
-     * arranged in balanced trees, not lists.  TreeBins hold the roots
-     * of sets of TreeNodes. ForwardingNodes are placed at the heads
-     * of bins during resizing. ReservationNodes are used as
-     * placeholders while establishing values in computeIfAbsent and
-     * related methods.  The types TreeBin, ForwardingNode, and
-     * ReservationNode do not hold normal user keys, values, or
-     * hashes, and are readily distinguishable during search etc
-     * because they have negative hash fields and null key and value
-     * fields. (These special nodes are either uncommon or transient,
-     * so the impact of carrying around some unused fields is
-     * insignificant.)
-     *
-     * The table is lazily initialized to a power-of-two size upon the
-     * first insertion.  Each bin in the table normally contains a
-     * list of Nodes (most often, the list has only zero or one Node).
-     * Table accesses require volatile/atomic reads, writes, and
-     * CASes.  Because there is no other way to arrange this without
-     * adding further indirections, we use intrinsics
-     * (sun.misc.Unsafe) operations.
-     *
-     * We use the top (sign) bit of Node hash fields for control
-     * purposes -- it is available anyway because of addressing
-     * constraints.  Nodes with negative hash fields are specially
-     * handled or ignored in map methods.
-     *
-     * Insertion (via put or its variants) of the first node in an
-     * empty bin is performed by just CASing it to the bin.  This is
-     * by far the most common case for put operations under most
-     * key/hash distributions.  Other update operations (insert,
-     * delete, and replace) require locks.  We do not want to waste
-     * the space required to associate a distinct lock object with
-     * each bin, so instead use the first node of a bin list itself as
-     * a lock. Locking support for these locks relies on builtin
-     * "synchronized" monitors.
-     *
-     * Using the first node of a list as a lock does not by itself
-     * suffice though: When a node is locked, any update must first
-     * validate that it is still the first node after locking it, and
-     * retry if not. Because new nodes are always appended to lists,
-     * once a node is first in a bin, it remains first until deleted
-     * or the bin becomes invalidated (upon resizing).
-     *
-     * The main disadvantage of per-bin locks is that other update
-     * operations on other nodes in a bin list protected by the same
-     * lock can stall, for example when user equals() or mapping
-     * functions take a long time.  However, statistically, under
-     * random hash codes, this is not a common problem.  Ideally, the
-     * frequency of nodes in bins follows a Poisson distribution
-     * (http://en.wikipedia.org/wiki/Poisson_distribution) with a
-     * parameter of about 0.5 on average, given the resizing threshold
-     * of 0.75, although with a large variance because of resizing
-     * granularity. Ignoring variance, the expected occurrences of
-     * list size k are (exp(-0.5) * pow(0.5, k) / factorial(k)). The
-     * first values are:
-     *
-     * 0:    0.60653066
-     * 1:    0.30326533
-     * 2:    0.07581633
-     * 3:    0.01263606
-     * 4:    0.00157952
-     * 5:    0.00015795
-     * 6:    0.00001316
-     * 7:    0.00000094
-     * 8:    0.00000006
-     * more: less than 1 in ten million
-     *
-     * Lock contention probability for two threads accessing distinct
-     * elements is roughly 1 / (8 * #elements) under random hashes.
-     *
-     * Actual hash code distributions encountered in practice
-     * sometimes deviate significantly from uniform randomness.  This
-     * includes the case when N > (1<<30), so some keys MUST collide.
-     * Similarly for dumb or hostile usages in which multiple keys are
-     * designed to have identical hash codes or ones that differs only
-     * in masked-out high bits. So we use a secondary strategy that
-     * applies when the number of nodes in a bin exceeds a
-     * threshold. These TreeBins use a balanced tree to hold nodes (a
-     * specialized form of red-black trees), bounding search time to
-     * O(log N).  Each search step in a TreeBin is at least twice as
-     * slow as in a regular list, but given that N cannot exceed
-     * (1<<64) (before running out of addresses) this bounds search
-     * steps, lock hold times, etc, to reasonable constants (roughly
-     * 100 nodes inspected per operation worst case) so long as keys
-     * are Comparable (which is very common -- String, Long, etc).
-     * TreeBin nodes (TreeNodes) also maintain the same "next"
-     * traversal pointers as regular nodes, so can be traversed in
-     * iterators in the same way.
-     *
-     * The table is resized when occupancy exceeds a percentage
-     * threshold (nominally, 0.75, but see below).  Any thread
-     * noticing an overfull bin may assist in resizing after the
-     * initiating thread allocates and sets up the replacement array.
-     * However, rather than stalling, these other threads may proceed
-     * with insertions etc.  The use of TreeBins shields us from the
-     * worst case effects of overfilling while resizes are in
-     * progress.  Resizing proceeds by transferring bins, one by one,
-     * from the table to the next table. However, threads claim small
-     * blocks of indices to transfer (via field transferIndex) before
-     * doing so, reducing contention.  A generation stamp in field
-     * sizeCtl ensures that resizings do not overlap. Because we are
-     * using power-of-two expansion, the elements from each bin must
-     * either stay at same index, or move with a power of two
-     * offset. We eliminate unnecessary node creation by catching
-     * cases where old nodes can be reused because their next fields
-     * won't change.  On average, only about one-sixth of them need
-     * cloning when a table doubles. The nodes they replace will be
-     * garbage collectable as soon as they are no longer referenced by
-     * any reader thread that may be in the midst of concurrently
-     * traversing table.  Upon transfer, the old table bin contains
-     * only a special forwarding node (with hash field "MOVED") that
-     * contains the next table as its key. On encountering a
-     * forwarding node, access and update operations restart, using
-     * the new table.
-     *
-     * Each bin transfer requires its bin lock, which can stall
-     * waiting for locks while resizing. However, because other
-     * threads can join in and help resize rather than contend for
-     * locks, average aggregate waits become shorter as resizing
-     * progresses.  The transfer operation must also ensure that all
-     * accessible bins in both the old and new table are usable by any
-     * traversal.  This is arranged in part by proceeding from the
-     * last bin (table.length - 1) up towards the first.  Upon seeing
-     * a forwarding node, traversals (see class Traverser) arrange to
-     * move to the new table without revisiting nodes.  To ensure that
-     * no intervening nodes are skipped even when moved out of order,
-     * a stack (see class TableStack) is created on first encounter of
-     * a forwarding node during a traversal, to maintain its place if
-     * later processing the current table. The need for these
-     * save/restore mechanics is relatively rare, but when one
-     * forwarding node is encountered, typically many more will be.
-     * So Traversers use a simple caching scheme to avoid creating so
-     * many new TableStack nodes. (Thanks to Peter Levart for
-     * suggesting use of a stack here.)
-     *
-     * The traversal scheme also applies to partial traversals of
-     * ranges of bins (via an alternate Traverser constructor)
-     * to support partitioned aggregate operations.  Also, read-only
-     * operations give up if ever forwarded to a null table, which
-     * provides support for shutdown-style clearing, which is also not
-     * currently implemented.
-     *
-     * Lazy table initialization minimizes footprint until first use,
-     * and also avoids resizings when the first operation is from a
-     * putAll, constructor with map argument, or deserialization.
-     * These cases attempt to override the initial capacity settings,
-     * but harmlessly fail to take effect in cases of races.
-     *
-     * The element count is maintained using a specialization of
-     * LongAdder. We need to incorporate a specialization rather than
-     * just use a LongAdder in order to access implicit
-     * contention-sensing that leads to creation of multiple
-     * CounterCells.  The counter mechanics avoid contention on
-     * updates but can encounter cache thrashing if read too
-     * frequently during concurrent access. To avoid reading so often,
-     * resizing under contention is attempted only upon adding to a
-     * bin already holding two or more nodes. Under uniform hash
-     * distributions, the probability of this occurring at threshold
-     * is around 13%, meaning that only about 1 in 8 puts check
-     * threshold (and after resizing, many fewer do so).
-     *
-     * TreeBins use a special form of comparison for search and
-     * related operations (which is the main reason we cannot use
-     * existing collections such as TreeMaps). TreeBins contain
-     * Comparable elements, but may contain others, as well as
-     * elements that are Comparable but not necessarily Comparable for
-     * the same T, so we cannot invoke compareTo among them. To handle
-     * this, the tree is ordered primarily by hash value, then by
-     * Comparable.compareTo order if applicable.  On lookup at a node,
-     * if elements are not comparable or compare as 0 then both left
-     * and right children may need to be searched in the case of tied
-     * hash values. (This corresponds to the full list search that
-     * would be necessary if all elements were non-Comparable and had
-     * tied hashes.) On insertion, to keep a total ordering (or as
-     * close as is required here) across rebalancings, we compare
-     * classes and identityHashCodes as tie-breakers. The red-black
-     * balancing code is updated from pre-jdk-collections
-     * (http://gee.cs.oswego.edu/dl/classes/collections/RBCell.java)
-     * based in turn on Cormen, Leiserson, and Rivest "Introduction to
-     * Algorithms" (CLR).
-     *
-     * TreeBins also require an additional locking mechanism.  While
-     * list traversal is always possible by readers even during
-     * updates, tree traversal is not, mainly because of tree-rotations
-     * that may change the root node and/or its linkages.  TreeBins
-     * include a simple read-write lock mechanism parasitic on the
-     * main bin-synchronization strategy: Structural adjustments
-     * associated with an insertion or removal are already bin-locked
-     * (and so cannot conflict with other writers) but must wait for
-     * ongoing readers to finish. Since there can be only one such
-     * waiter, we use a simple scheme using a single "waiter" field to
-     * block writers.  However, readers need never block.  If the root
-     * lock is held, they proceed along the slow traversal path (via
-     * next-pointers) until the lock becomes available or the list is
-     * exhausted, whichever comes first. These cases are not fast, but
-     * maximize aggregate expected throughput.
-     *
-     * Maintaining API and serialization compatibility with previous
-     * versions of this class introduces several oddities. Mainly: We
-     * leave untouched but unused constructor arguments refering to
-     * concurrencyLevel. We accept a loadFactor constructor argument,
-     * but apply it only to initial table capacity (which is the only
-     * time that we can guarantee to honor it.) We also declare an
-     * unused "Segment" class that is instantiated in minimal form
-     * only when serializing.
-     *
-     * Also, solely for compatibility with previous versions of this
-     * class, it extends AbstractMap, even though all of its methods
-     * are overridden, so it is just useless baggage.
-     *
-     * This file is organized to make things a little easier to follow
-     * while reading than they might otherwise: First the main static
-     * declarations and utilities, then fields, then main public
-     * methods (with a few factorings of multiple public methods into
-     * internal ones), then sizing methods, trees, traversers, and
-     * bulk operations.
-     */
 
     /* ---------------- Constants -------------- */
 
@@ -513,6 +92,8 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     /**
      * The default initial table capacity.  Must be a power of 2
      * (i.e., at least 1) and at most MAXIMUM_CAPACITY.
+     *
+     * 默认容量
      */
     private static final int DEFAULT_CAPACITY = 16;
 
@@ -544,6 +125,8 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * than 2, and should be at least 8 to mesh with assumptions in
      * tree removal about conversion back to plain bins upon
      * shrinkage.
+     *
+     * 由链表向红黑树转换的阈值
      */
     static final int TREEIFY_THRESHOLD = 8;
 
@@ -551,6 +134,8 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * The bin count threshold for untreeifying a (split) bin during a
      * resize operation. Should be less than TREEIFY_THRESHOLD, and at
      * most 6 to mesh with shrinkage detection under removal.
+     *
+     * 由红黑树向链表转换的阈值
      */
     static final int UNTREEIFY_THRESHOLD = 6;
 
@@ -615,6 +200,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * in bulk tasks.  Subclasses of Node with a negative hash field
      * are special, and contain null keys and values (but are never
      * exported).  Otherwise, keys and vals are never null.
+     *  存储结构的基本单元
      */
     static class Node<K,V> implements Map.Entry<K,V> {
         final int hash;
@@ -680,6 +266,8 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * cheapest possible way to reduce systematic lossage, as well as
      * to incorporate impact of the highest bits that would otherwise
      * never be used in index calculations because of table bounds.
+     *
+     * 计算hash值
      */
     static final int spread(int h) {
         return (h ^ (h >>> 16)) & HASH_BITS;
@@ -755,6 +343,9 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
         return (Node<K,V>)U.getObjectVolatile(tab, ((long)i << ASHIFT) + ABASE);
     }
 
+    /**
+     * cas插入
+     */
     static final <K,V> boolean casTabAt(Node<K,V>[] tab, int i,
                                         Node<K,V> c, Node<K,V> v) {
         return U.compareAndSwapObject(tab, ((long)i << ASHIFT) + ABASE, c, v);
@@ -769,6 +360,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     /**
      * The array of bins. Lazily initialized upon first insertion.
      * Size is always a power of two. Accessed directly by iterators.
+     * 元素列表
      */
     transient volatile Node<K,V>[] table;
 
@@ -791,6 +383,11 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * when table is null, holds the initial table size to use upon
      * creation, or 0 for default. After initialization, holds the
      * next element count value upon which to resize the table.
+     *
+     * 初始化和再散列控制
+     * 当为负数时，-1 表示正在初始化，-N 表示 N - 1 个线程正在进行扩容；
+     * 当为 0 时，表示 table 还没有初始化；
+     * 当为其他正数时，表示初始化或者下一次进行扩容的大小。
      */
     private transient volatile int sizeCtl;
 
@@ -932,16 +529,24 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * @throws NullPointerException if the specified key is null
      */
     public V get(Object key) {
-        Node<K,V>[] tab; Node<K,V> e, p; int n, eh; K ek;
+        Node<K,V>[] tab;
+        Node<K,V> e, p;
+        int n, eh;
+        K ek;
+
+        //计算hash值
         int h = spread(key.hashCode());
-        if ((tab = table) != null && (n = tab.length) > 0 &&
-            (e = tabAt(tab, (n - 1) & h)) != null) {
+        if ((tab = table) != null
+                && (n = tab.length) > 0
+                && (e = tabAt(tab, (n - 1) & h)) != null) {
+
             if ((eh = e.hash) == h) {
                 if ((ek = e.key) == key || (ek != null && key.equals(ek)))
                     return e.val;
-            }
-            else if (eh < 0)
+            } else if (eh < 0)
+                //正在扩容
                 return (p = e.find(h, key)) != null ? p.val : null;
+
             while ((e = e.next) != null) {
                 if (e.hash == h &&
                     ((ek = e.key) == key || (ek != null && key.equals(ek))))
@@ -1006,38 +611,58 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
         return putVal(key, value, false);
     }
 
-    /** Implementation for put and putIfAbsent */
+    /** put 和 putIfAbsent 的实现*/
     final V putVal(K key, V value, boolean onlyIfAbsent) {
+        //key和value都不能为null
         if (key == null || value == null) throw new NullPointerException();
+        //计算hash值
         int hash = spread(key.hashCode());
+
+        //记录相应链表的长度
         int binCount = 0;
         for (Node<K,V>[] tab = table;;) {
-            Node<K,V> f; int n, i, fh;
-            if (tab == null || (n = tab.length) == 0)
+            Node<K,V> f;
+            int n, i, fh;
+            if (tab == null || (n = tab.length) == 0) {
+                //数组没有初始化，则初始化
                 tab = initTable();
-            else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
+            } else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
+                //没有hash冲突，数组该位置为空，cas插入
                 if (casTabAt(tab, i, null,
-                             new Node<K,V>(hash, key, value, null)))
-                    break;                   // no lock when adding to empty bin
-            }
-            else if ((fh = f.hash) == MOVED)
+                             new Node<K,V>(hash, key, value, null))) {
+                    // 位置为空，无锁插入
+                    //cas插入失败，有并发操作，进入下一循环
+                    //插入成功，结束循环
+                    break;
+                }
+            } else if ((fh = f.hash) == MOVED) {
+                //正在扩容，再散列
                 tab = helpTransfer(tab, f);
-            else {
+            } else {
+                //f是该位置的头结点，而且不为空
+                //存在hash冲突，加锁保证线程安全
                 V oldVal = null;
+                //获取数组该位置的头结点的监视器锁
                 synchronized (f) {
                     if (tabAt(tab, i) == f) {
-                        if (fh >= 0) {
+                        if (fh >= 0) { //头结点的hash值大于0,说明是链表
+                            //链表形式，遍历到尾端出插入
+                            //用户累加，遍历链表的长度
                             binCount = 1;
+                            //遍历链表
                             for (Node<K,V> e = f;; ++binCount) {
                                 K ek;
+                                //
                                 if (e.hash == hash &&
                                     ((ek = e.key) == key ||
                                      (ek != null && key.equals(ek)))) {
+                                    //发现相等的key，判断是否要覆盖，然后结束插入
                                     oldVal = e.val;
                                     if (!onlyIfAbsent)
                                         e.val = value;
                                     break;
                                 }
+                                //到了链表的最末端，将新值放入链表的最后面
                                 Node<K,V> pred = e;
                                 if ((e = e.next) == null) {
                                     pred.next = new Node<K,V>(hash, key,
@@ -1045,10 +670,11 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                                     break;
                                 }
                             }
-                        }
-                        else if (f instanceof TreeBin) {
+                        } else if (f instanceof TreeBin) {
+                            //按照红黑树的结构插入
                             Node<K,V> p;
                             binCount = 2;
+                            //调用红黑树的插值方法插入新节点
                             if ((p = ((TreeBin<K,V>)f).putTreeVal(hash, key,
                                                            value)) != null) {
                                 oldVal = p.val;
@@ -1058,15 +684,23 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                         }
                     }
                 }
+
                 if (binCount != 0) {
+                    //说明上面在做链表操作
+                    //判断是否将链表转换为红黑树
                     if (binCount >= TREEIFY_THRESHOLD)
+                        //链表数量大于阈值8，先转转成红黑树结构
+                        //如果数组的长度小于64，会进行扩容
                         treeifyBin(tab, i);
+
                     if (oldVal != null)
                         return oldVal;
                     break;
                 }
             }
         }
+
+        //添加成功，统计size
         addCount(1L, binCount);
         return null;
     }
@@ -2219,22 +1853,30 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * Initializes table, using the size recorded in sizeCtl.
+     * 数组初始化
      */
     private final Node<K,V>[] initTable() {
         Node<K,V>[] tab; int sc;
         while ((tab = table) == null || tab.length == 0) {
+            //初始化被其它线程抢去了
             if ((sc = sizeCtl) < 0)
                 Thread.yield(); // lost initialization race; just spin
             else if (U.compareAndSwapInt(this, SIZECTL, sc, -1)) {
+                //CAS一下，将sizeCtl设置为-1,代表抢到了锁
                 try {
                     if ((tab = table) == null || tab.length == 0) {
+                        //默认初始容量是16
                         int n = (sc > 0) ? sc : DEFAULT_CAPACITY;
+                        //初始化数组，长度是16或初始化时提供的长度
                         @SuppressWarnings("unchecked")
                         Node<K,V>[] nt = (Node<K,V>[])new Node<?,?>[n];
+                        //将数组赋值给table，table是volatile的
                         table = tab = nt;
+                        //sc = n * 0.75
                         sc = n - (n >>> 2);
                     }
                 } finally {
+                    //设置sizeCtl为sc，默认12
                     sizeCtl = sc;
                 }
                 break;
@@ -2252,6 +1894,8 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      *
      * @param x the count to add
      * @param check if <0, don't check resize, if <= 1 only check if uncontended
+     *
+     * 统计size
      */
     private final void addCount(long x, int check) {
         CounterCell[] as; long b, s;
@@ -2293,6 +1937,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * Helps transfer if a resize is in progress.
+     * 调用多个工作线程一起帮助扩容
      */
     final Node<K,V>[] helpTransfer(Node<K,V>[] tab, Node<K,V> f) {
         Node<K,V>[] nextTab; int sc;
@@ -2305,6 +1950,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                     sc == rs + MAX_RESIZERS || transferIndex <= 0)
                     break;
                 if (U.compareAndSwapInt(this, SIZECTL, sc, sc + 1)) {
+                    //扩容
                     transfer(tab, nextTab);
                     break;
                 }
@@ -2363,6 +2009,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     /**
      * Moves and/or copies the nodes in each bin to new table. See
      * above for explanation.
+     * 扩容
      */
     private final void transfer(Node<K,V>[] tab, Node<K,V>[] nextTab) {
         int n = tab.length, stride;
@@ -2607,15 +2254,20 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     /**
      * Replaces all linked nodes in bin at given index unless table is
      * too small, in which case resizes instead.
+     * 链表转换为红黑树
      */
     private final void treeifyBin(Node<K,V>[] tab, int index) {
         Node<K,V> b; int n, sc;
         if (tab != null) {
-            if ((n = tab.length) < MIN_TREEIFY_CAPACITY)
+            if ((n = tab.length) < MIN_TREEIFY_CAPACITY) {
+                //数组长度小于64，进行数组扩容
                 tryPresize(n << 1);
-            else if ((b = tabAt(tab, index)) != null && b.hash >= 0) {
+            } else if ((b = tabAt(tab, index)) != null && b.hash >= 0) {
+                //b是头结点
+                //加锁
                 synchronized (b) {
                     if (tabAt(tab, index) == b) {
+                        //遍历链表，建立一个红黑树
                         TreeNode<K,V> hd = null, tl = null;
                         for (Node<K,V> e = b; e != null; e = e.next) {
                             TreeNode<K,V> p =
@@ -2627,6 +2279,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                                 tl.next = p;
                             tl = p;
                         }
+                        //将红黑树设置到数组相应位置
                         setTabAt(tab, index, new TreeBin<K,V>(hd));
                     }
                 }
@@ -2654,6 +2307,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * Nodes for use in TreeBins
+     * 红黑树的存储结构
      */
     static final class TreeNode<K,V> extends Node<K,V> {
         TreeNode<K,V> parent;  // red-black tree links
@@ -2714,6 +2368,8 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
      * their root. They also maintain a parasitic read-write lock
      * forcing writers (who hold bin lock) to wait for readers (who do
      * not) to complete before tree restructuring operations.
+     *
+     * 封装TreeNode的容器，提供转换红黑树的一些条件和锁的控制
      */
     static final class TreeBin<K,V> extends Node<K,V> {
         TreeNode<K,V> root;

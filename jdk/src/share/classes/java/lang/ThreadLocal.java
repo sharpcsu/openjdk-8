@@ -71,6 +71,8 @@ import java.util.function.Supplier;
  * @author  Josh Bloch and Doug Lea
  * @since   1.2
  */
+//本地线程
+//ThreadLocal内部持有静态类ThreadLocalMap
 public class ThreadLocal<T> {
     /**
      * ThreadLocals rely on per-thread linear-probe hash maps attached
@@ -122,6 +124,8 @@ public class ThreadLocal<T> {
      * anonymous inner class will be used.
      *
      * @return the initial value for this thread-local
+     *
+     * 返回当前对象的初始值，由子类完成
      */
     protected T initialValue() {
         return null;
@@ -149,6 +153,10 @@ public class ThreadLocal<T> {
     }
 
     /**
+     * 获取线程对应的value
+     * 获取当前线程entry里value的值
+     * 先获取当前线程的ThreadLocalMap，然后以当前ThreadLocal为key获取map中的value
+     *
      * Returns the value in the current thread's copy of this
      * thread-local variable.  If the variable has no value for the
      * current thread, it is first initialized to the value returned
@@ -157,37 +165,54 @@ public class ThreadLocal<T> {
      * @return the current thread's value of this thread-local
      */
     public T get() {
+        //1 获取当前线程
         Thread t = Thread.currentThread();
+        //2 获取当前线程对应的ThreadLocalMap对象
         ThreadLocalMap map = getMap(t);
+
+        //3 如果获取到了，则获取此ThreadLocalMap下的entry对象
         if (map != null) {
             ThreadLocalMap.Entry e = map.getEntry(this);
+            //若entry也获取到了
             if (e != null) {
+                //4 直接获取entry对应的value返回
                 @SuppressWarnings("unchecked")
                 T result = (T)e.value;
                 return result;
             }
         }
+
+        //没有获取到ThreadLocalMap或没有获取到Entry，设置初始值
         return setInitialValue();
     }
 
     /**
+     * 设置初始值
      * Variant of set() to establish initialValue. Used instead
      * of set() in case user has overridden the set() method.
      *
      * @return the initial value
      */
     private T setInitialValue() {
+        //获取initialValue生成的值，由子类实现
         T value = initialValue();
+        //获取当前线程
         Thread t = Thread.currentThread();
+        //获取map
         ThreadLocalMap map = getMap(t);
         if (map != null)
+            //获取到了，set
             map.set(this, value);
         else
+            //没获取到，创建map
             createMap(t, value);
         return value;
     }
 
     /**
+     * 设置当前线程的局部变量值
+     * 实际上ThreadLocal的值是放入了当前线程的一个ThreadLocalMap实例中，所以只能在本线程中访问
+     *
      * Sets the current thread's copy of this thread-local variable
      * to the specified value.  Most subclasses will have no need to
      * override this method, relying solely on the {@link #initialValue}
@@ -197,15 +222,21 @@ public class ThreadLocal<T> {
      *        this thread-local.
      */
     public void set(T value) {
+        //获取当前线程
         Thread t = Thread.currentThread();
+        //获取当前线程对应的ThreadLocalMap实例，这里将当前线程t传进去了，说明ThreadLocalMap是在线程里持有的引用
         ThreadLocalMap map = getMap(t);
+        //若当前线程有对应的ThreadLocalMap实例，则将当前ThreadLocal对象作为key，value作为值存到ThreadLocalMap的entry里
         if (map != null)
             map.set(this, value);
         else
+            //若当前线程没有对应的ThreadLocalMap实例，则创建ThreadLocalMap，并与此线程绑定
             createMap(t, value);
     }
 
     /**
+     * 将当前线程局部变量的值删除，目的是减少内存占用，防止内存泄漏
+     *
      * Removes the current thread's value for this thread-local
      * variable.  If this thread-local variable is subsequently
      * {@linkplain #get read} by the current thread, its value will be
@@ -217,12 +248,15 @@ public class ThreadLocal<T> {
      * @since 1.5
      */
      public void remove() {
+         //获取当前线程的ThreadLocalMap对象，并将其移除
          ThreadLocalMap m = getMap(Thread.currentThread());
          if (m != null)
+             //直接移除key为当前ThreadLocal的value
              m.remove(this);
      }
 
     /**
+     * 返回当前线程 threadLocals 的引用，引用指向的是ThreadLocal里的ThreadLocalMap对象
      * Get the map associated with a ThreadLocal. Overridden in
      * InheritableThreadLocal.
      *
@@ -234,6 +268,7 @@ public class ThreadLocal<T> {
     }
 
     /**
+     * 创建threadLocalmap对象
      * Create the map associated with a ThreadLocal. Overridden in
      * InheritableThreadLocal.
      *
@@ -241,6 +276,7 @@ public class ThreadLocal<T> {
      * @param firstValue value for the initial entry of the map
      */
     void createMap(Thread t, T firstValue) {
+        //this是当前ThreadLocal对象
         t.threadLocals = new ThreadLocalMap(this, firstValue);
     }
 
@@ -286,6 +322,8 @@ public class ThreadLocal<T> {
     }
 
     /**
+     * 在一个线程里ThreadLocalMap就一个，entry是个数组，为了存放一个线程中new的多个ThreadLocal
+     *
      * ThreadLocalMap is a customized hash map suitable only for
      * maintaining thread local values. No operations are exported
      * outside of the ThreadLocal class. The class is package private to
@@ -304,13 +342,17 @@ public class ThreadLocal<T> {
          * == null) mean that the key is no longer referenced, so the
          * entry can be expunged from table.  Such entries are referred to
          * as "stale entries" in the code that follows.
+         *
+         * ThreadLocalMap内部有Entry对象，Entry的key是ThreadLocal本身，value是泛型值
          */
         static class Entry extends WeakReference<ThreadLocal<?>> {
             /** The value associated with this ThreadLocal. */
             Object value;
 
             Entry(ThreadLocal<?> k, Object v) {
+                //调用父类，父类是一个弱引用
                 super(k);
+                //强引用
                 value = v;
             }
         }
@@ -358,6 +400,7 @@ public class ThreadLocal<T> {
         }
 
         /**
+         * 构造器
          * Construct a new map initially containing (firstKey, firstValue).
          * ThreadLocalMaps are constructed lazily, so we only create
          * one when we have at least one entry to put in it.
@@ -365,6 +408,7 @@ public class ThreadLocal<T> {
         ThreadLocalMap(ThreadLocal<?> firstKey, Object firstValue) {
             table = new Entry[INITIAL_CAPACITY];
             int i = firstKey.threadLocalHashCode & (INITIAL_CAPACITY - 1);
+            //添加一个ThreadLocalMap的内部类Entry
             table[i] = new Entry(firstKey, firstValue);
             size = 1;
             setThreshold(INITIAL_CAPACITY);
@@ -448,7 +492,7 @@ public class ThreadLocal<T> {
         /**
          * Set the value associated with key.
          *
-         * @param key the thread local object
+         * @param key ThreadLocal对象
          * @param value the value to be set
          */
         private void set(ThreadLocal<?> key, Object value) {
@@ -689,6 +733,7 @@ public class ThreadLocal<T> {
                 Entry e = oldTab[j];
                 if (e != null) {
                     ThreadLocal<?> k = e.get();
+                    //当ThreadLocal为空时，将ThreadLocal对应的value也设置为null
                     if (k == null) {
                         e.value = null; // Help the GC
                     } else {
