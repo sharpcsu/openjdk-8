@@ -541,12 +541,14 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                 && (e = tabAt(tab, (n - 1) & h)) != null) {
 
             if ((eh = e.hash) == h) {
+                //判断头结点是否就是需要的节点
                 if ((ek = e.key) == key || (ek != null && key.equals(ek)))
                     return e.val;
-            } else if (eh < 0)
+            } else if (eh < 0)  //正在扩容或该位置是红黑树
                 //正在扩容
                 return (p = e.find(h, key)) != null ? p.val : null;
 
+            //遍历链表
             while ((e = e.next) != null) {
                 if (e.hash == h &&
                     ((ek = e.key) == key || (ek != null && key.equals(ek))))
@@ -1963,15 +1965,21 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     /**
      * Tries to presize table to accommodate the given number of elements.
      *
-     * @param size number of elements (doesn't need to be perfectly accurate)
+     * 尝试扩容
+     *
+     * 核心在于 sizeCtl 值的操作，首先将其设置为一个负数，然后执行 transfer(tab, null)，
+     * 再下一个循环将 sizeCtl 加 1，并执行 transfer(tab, nt)，之后可能是继续 sizeCtl 加 1，并执行 transfer(tab, nt)。
+     * @param size 扩容后的参数
      */
     private final void tryPresize(int size) {
+        //c：size的1.5倍，再加1，再往上取最近的2的n次方
         int c = (size >= (MAXIMUM_CAPACITY >>> 1)) ? MAXIMUM_CAPACITY :
             tableSizeFor(size + (size >>> 1) + 1);
         int sc;
         while ((sc = sizeCtl) >= 0) {
             Node<K,V>[] tab = table; int n;
             if (tab == null || (n = tab.length) == 0) {
+                //数组初始化
                 n = (sc > c) ? sc : c;
                 if (U.compareAndSwapInt(this, SIZECTL, sc, -1)) {
                     try {
@@ -1985,8 +1993,7 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                         sizeCtl = sc;
                     }
                 }
-            }
-            else if (c <= sc || n >= MAXIMUM_CAPACITY)
+            } else if (c <= sc || n >= MAXIMUM_CAPACITY)
                 break;
             else if (tab == table) {
                 int rs = resizeStamp(n);
@@ -1996,10 +2003,10 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                         sc == rs + MAX_RESIZERS || (nt = nextTable) == null ||
                         transferIndex <= 0)
                         break;
+                    //用CAS将sizeCtl加1，然后执行transfer方法
                     if (U.compareAndSwapInt(this, SIZECTL, sc, sc + 1))
                         transfer(tab, nt);
-                }
-                else if (U.compareAndSwapInt(this, SIZECTL, sc,
+                } else if (U.compareAndSwapInt(this, SIZECTL, sc,
                                              (rs << RESIZE_STAMP_SHIFT) + 2))
                     transfer(tab, null);
             }
@@ -2007,16 +2014,23 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
     }
 
     /**
+     * 数据迁移，扩容
+     * 将原来的tab数组的元素迁移到新的nextTab数组中
      * Moves and/or copies the nodes in each bin to new table. See
      * above for explanation.
-     * 扩容
      */
     private final void transfer(Node<K,V>[] tab, Node<K,V>[] nextTab) {
-        int n = tab.length, stride;
+        int n = tab.length,
+                stride;  //步长
+
+        //将n个任务分为多个任务包，每个任务包有 stride 个任务
         if ((stride = (NCPU > 1) ? (n >>> 3) / NCPU : n) < MIN_TRANSFER_STRIDE)
             stride = MIN_TRANSFER_STRIDE; // subdivide range
+
+        //如果 nextTab 为null，先进行一次初始化
         if (nextTab == null) {            // initiating
             try {
+                //容量翻倍
                 @SuppressWarnings("unchecked")
                 Node<K,V>[] nt = (Node<K,V>[])new Node<?,?>[n << 1];
                 nextTab = nt;
@@ -2024,15 +2038,29 @@ public class ConcurrentHashMap<K,V> extends AbstractMap<K,V>
                 sizeCtl = Integer.MAX_VALUE;
                 return;
             }
+            //nextTable是ConcurrentHashMap中的属性
             nextTable = nextTab;
+            //transferIndex是ConcurrentHashMap属性，用于控制迁移的位置
             transferIndex = n;
         }
+
         int nextn = nextTab.length;
+
+        //正在被迁移的Node
+        // 这个构造方法会生成一个Node，key、value 和 next 都为 null，关键是 hash 为 MOVED
+        // 后面我们会看到，原数组中位置 i 处的节点完成迁移工作后，
+        // 就会将位置 i 处设置为这个 ForwardingNode，用来告诉其他线程该位置已经处理过了
+        // 所以它其实相当于是一个标志。
         ForwardingNode<K,V> fwd = new ForwardingNode<K,V>(nextTab);
+        //advance指的是做完了一个位置的迁移工作，可以准备下一个位置的了
         boolean advance = true;
         boolean finishing = false; // to ensure sweep before committing nextTab
+
+        //i是位置索引，bound是边界，注意是从后往前
         for (int i = 0, bound = 0;;) {
             Node<K,V> f; int fh;
+            //advance为true表示可以进行下一位置的迁移
+            //结局：i指向了transferIndex，bound指向了transferIndex-stride
             while (advance) {
                 int nextIndex, nextBound;
                 if (--i >= bound || finishing)
