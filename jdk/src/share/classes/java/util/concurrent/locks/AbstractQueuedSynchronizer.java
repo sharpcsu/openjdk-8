@@ -156,27 +156,11 @@ public abstract class AbstractQueuedSynchronizer
         node.prev = null;
     }
 
-    /**
-     * Wakes up node's successor, if one exists.
-     *
-     * @param node the node
-     */
     private void unparkSuccessor(Node node) {
-        /*
-         * If status is negative (i.e., possibly needing signal) try
-         * to clear in anticipation of signalling.  It is OK if this
-         * fails or if status is changed by waiting thread.
-         */
         int ws = node.waitStatus;
         if (ws < 0)
             compareAndSetWaitStatus(node, ws, 0);
 
-        /*
-         * Thread to unpark is held in successor, which is normally
-         * just the next node.  But if cancelled or apparently null,
-         * traverse backwards from tail to find the actual
-         * non-cancelled successor.
-         */
         Node s = node.next;
         if (s == null || s.waitStatus > 0) {
             s = null;
@@ -222,11 +206,6 @@ public abstract class AbstractQueuedSynchronizer
 
     // Utilities for various versions of acquire
 
-    /**
-     * Cancels an ongoing attempt to acquire.
-     *
-     * @param node the node
-     */
     private void cancelAcquire(Node node) {
         // Ignore if node doesn't exist
         if (node == null)
@@ -1036,23 +1015,14 @@ public abstract class AbstractQueuedSynchronizer
         } catch (Exception ex) { throw new Error(ex); }
     }
 
-    /**
-     * CAS head field. Used only by enq.
-     */
     private final boolean compareAndSetHead(Node update) {
         return unsafe.compareAndSwapObject(this, headOffset, null, update);
     }
 
-    /**
-     * CAS tail field. Used only by enq.
-     */
     private final boolean compareAndSetTail(Node expect, Node update) {
         return unsafe.compareAndSwapObject(this, tailOffset, expect, update);
     }
 
-    /**
-     * CAS waitStatus field of a node.
-     */
     private static final boolean compareAndSetWaitStatus(Node node,
                                                          int expect,
                                                          int update) {
@@ -1060,9 +1030,6 @@ public abstract class AbstractQueuedSynchronizer
                                         expect, update);
     }
 
-    /**
-     * CAS next field of a node.
-     */
     private static final boolean compareAndSetNext(Node node,
                                                    Node expect,
                                                    Node update) {
