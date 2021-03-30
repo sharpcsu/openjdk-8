@@ -2,12 +2,6 @@ package java.util.concurrent;
 import java.util.*;
 
 public interface BlockingDeque<E> extends BlockingQueue<E>, Deque<E> {
-    /*
-     * We have "diamond" multiple interface inheritance here, and that
-     * introduces ambiguities.  Methods might end up with different
-     * specs depending on the branch chosen by javadoc.  Thus a lot of
-     * methods specs here are copied from superinterfaces.
-     */
 
     void addFirst(E e);
 
