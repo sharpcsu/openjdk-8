@@ -47,12 +47,6 @@ public abstract class AbstractExecutorService implements ExecutorService {
         ExecutorCompletionService<T> ecs =
             new ExecutorCompletionService<T>(this);
 
-        // For efficiency, especially in executors with limited
-        // parallelism, check to see if previously submitted tasks are
-        // done before submitting more of them. This interleaving
-        // plus the exception mechanics account for messiness of main
-        // loop.
-
         try {
             // Record exceptions so that if we fail to obtain any
             // result, we can throw the last exception we got.

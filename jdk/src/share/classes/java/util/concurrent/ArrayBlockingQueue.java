@@ -1035,18 +1035,6 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
             return false;
         }
 
-//         /** Uncomment for debugging. */
-//         public String toString() {
-//             return ("cursor=" + cursor + " " +
-//                     "nextIndex=" + nextIndex + " " +
-//                     "lastRet=" + lastRet + " " +
-//                     "nextItem=" + nextItem + " " +
-//                     "lastItem=" + lastItem + " " +
-//                     "prevCycles=" + prevCycles + " " +
-//                     "prevTakeIndex=" + prevTakeIndex + " " +
-//                     "size()=" + size() + " " +
-//                     "remainingCapacity()=" + remainingCapacity());
-//         }
     }
 
     public Spliterator<E> spliterator() {
