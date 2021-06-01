@@ -22,39 +22,20 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
     implements BlockingQueue<E>, java.io.Serializable {
     private static final long serialVersionUID = 5595510919245408276L;
 
-    /**
-     * Default array capacity.
-     */
     private static final int DEFAULT_INITIAL_CAPACITY = 11;
 
     private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     private transient Object[] queue;
 
-    /**
-     * The number of elements in the priority queue.
-     */
     private transient int size;
 
-    /**
-     * The comparator, or null if priority queue uses elements'
-     * natural ordering.
-     */
     private transient Comparator<? super E> comparator;
 
-    /**
-     * Lock used for all public operations
-     */
     private final ReentrantLock lock;
 
-    /**
-     * Condition for blocking when empty
-     */
     private final Condition notEmpty;
 
-    /**
-     * Spinlock for allocation, acquired via CAS.
-     */
     private transient volatile int allocationSpinLock;
 
     private PriorityQueue<E> q;
@@ -142,9 +123,6 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         }
     }
 
-    /**
-     * Mechanics for poll().  Call only while holding lock.
-     */
     private E dequeue() {
         int n = size - 1;
         if (n < 0)
@@ -231,10 +209,6 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         }
     }
 
-    /**
-     * Establishes the heap invariant (described above) in the entire tree,
-     * assuming nothing about the order of the elements prior to the call.
-     */
     private void heapify() {
         Object[] array = queue;
         int n = size;
@@ -361,9 +335,6 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         return -1;
     }
 
-    /**
-     * Removes the ith element from queue.
-     */
     private void removeAt(int i) {
         Object[] array = queue;
         int n = size - 1;
@@ -401,9 +372,6 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         }
     }
 
-    /**
-     * Identity-based version for use in Itr.remove
-     */
     void removeEQ(Object o) {
         final ReentrantLock lock = this.lock;
         lock.lock();
@@ -486,10 +454,6 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         }
     }
 
-    /**
-     * Atomically removes all of the elements from this queue.
-     * The queue will be empty after this call returns.
-     */
     public void clear() {
         final ReentrantLock lock = this.lock;
         lock.lock();
@@ -525,9 +489,6 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         return new Itr(toArray());
     }
 
-    /**
-     * Snapshot iterator that works off copy of underlying q array.
-     */
     final class Itr implements Iterator<E> {
         final Object[] array; // Array of all elements
         int cursor;           // index of next element to return

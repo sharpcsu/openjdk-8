@@ -21,25 +21,10 @@ public class LinkedBlockingDeque<E>
 
     /** Doubly-linked list node class */
     static final class Node<E> {
-        /**
-         * The item, or null if this node has been removed.
-         */
         E item;
 
-        /**
-         * One of:
-         * - the real predecessor Node
-         * - this Node, meaning the predecessor is tail
-         * - null, meaning there is no predecessor
-         */
         Node<E> prev;
 
-        /**
-         * One of:
-         * - the real successor Node
-         * - this Node, meaning the successor is head
-         * - null, meaning there is no successor
-         */
         Node<E> next;
 
         Node(E x) {
@@ -948,23 +933,10 @@ public class LinkedBlockingDeque<E>
      * Base class for Iterators for LinkedBlockingDeque
      */
     private abstract class AbstractItr implements Iterator<E> {
-        /**
-         * The next node to return in next()
-         */
         Node<E> next;
 
-        /**
-         * nextItem holds on to item fields because once we claim that
-         * an element exists in hasNext(), we must return item read
-         * under lock (in advance()) even if it was in the process of
-         * being removed when hasNext() was called.
-         */
         E nextItem;
 
-        /**
-         * Node returned by most recent call to next. Needed by remove.
-         * Reset to null if this element is deleted by a call to remove.
-         */
         private Node<E> lastRet;
 
         abstract Node<E> firstNode();
@@ -982,10 +954,6 @@ public class LinkedBlockingDeque<E>
             }
         }
 
-        /**
-         * Returns the successor node of the given non-null, but
-         * possibly previously deleted, node.
-         */
         private Node<E> succ(Node<E> n) {
             // Chains of deleted nodes ending in null or self-links
             // are possible if multiple interior nodes are removed.
@@ -1002,9 +970,6 @@ public class LinkedBlockingDeque<E>
             }
         }
 
-        /**
-         * Advances next.
-         */
         void advance() {
             final ReentrantLock lock = LinkedBlockingDeque.this.lock;
             lock.lock();

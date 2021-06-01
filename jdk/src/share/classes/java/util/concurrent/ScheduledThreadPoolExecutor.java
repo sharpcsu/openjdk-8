@@ -9,30 +9,14 @@ public class ScheduledThreadPoolExecutor
         extends ThreadPoolExecutor
         implements ScheduledExecutorService {
 
-    /**
-     * False if should cancel/suppress periodic tasks on shutdown.
-     */
     private volatile boolean continueExistingPeriodicTasksAfterShutdown;
 
-    /**
-     * False if should cancel non-periodic tasks on shutdown.
-     */
     private volatile boolean executeExistingDelayedTasksAfterShutdown = true;
 
-    /**
-     * True if ScheduledFutureTask.cancel should remove from queue
-     */
     private volatile boolean removeOnCancel = false;
 
-    /**
-     * Sequence number to break scheduling ties, and in turn to
-     * guarantee FIFO order among tied entries.
-     */
     private static final AtomicLong sequencer = new AtomicLong();
 
-    /**
-     * Returns current nanosecond time.
-     */
     final long now() {
         return System.nanoTime();
     }
@@ -46,25 +30,13 @@ public class ScheduledThreadPoolExecutor
         /** The time the task is enabled to execute in nanoTime units */
         private long time;
 
-        /**
-         * Period in nanoseconds for repeating tasks.  A positive
-         * value indicates fixed-rate execution.  A negative value
-         * indicates fixed-delay execution.  A value of 0 indicates a
-         * non-repeating task.
-         */
         private final long period;
 
         /** The actual task to be re-enqueued by reExecutePeriodic */
         RunnableScheduledFuture<V> outerTask = this;
 
-        /**
-         * Index into delay queue, to support faster cancellation.
-         */
         int heapIndex;
 
-        /**
-         * Creates a one-shot action with given nanoTime-based trigger time.
-         */
         ScheduledFutureTask(Runnable r, V result, long ns) {
             super(r, result);
             this.time = ns;
@@ -72,9 +44,6 @@ public class ScheduledThreadPoolExecutor
             this.sequenceNumber = sequencer.getAndIncrement();
         }
 
-        /**
-         * Creates a periodic action with given nano time and period.
-         */
         ScheduledFutureTask(Runnable r, V result, long ns, long period) {
             super(r, result);
             this.time = ns;
@@ -82,9 +51,6 @@ public class ScheduledThreadPoolExecutor
             this.sequenceNumber = sequencer.getAndIncrement();
         }
 
-        /**
-         * Creates a one-shot action with given nanoTime-based trigger time.
-         */
         ScheduledFutureTask(Callable<V> callable, long ns) {
             super(callable);
             this.time = ns;
@@ -115,18 +81,10 @@ public class ScheduledThreadPoolExecutor
             return (diff < 0) ? -1 : (diff > 0) ? 1 : 0;
         }
 
-        /**
-         * Returns {@code true} if this is a periodic (not a one-shot) action.
-         *
-         * @return {@code true} if periodic
-         */
         public boolean isPeriodic() {
             return period != 0;
         }
 
-        /**
-         * Sets the next time to run for a periodic task.
-         */
         private void setNextRunTime() {
             long p = period;
             if (p > 0)
@@ -142,9 +100,6 @@ public class ScheduledThreadPoolExecutor
             return cancelled;
         }
 
-        /**
-         * Overrides FutureTask version so as to reset/requeue if periodic.
-         */
         public void run() {
             boolean periodic = isPeriodic();
             if (!canRunInCurrentRunState(periodic))
@@ -440,9 +395,6 @@ public class ScheduledThreadPoolExecutor
             setIndex(key, k);
         }
 
-        /**
-         * Resizes the heap array.  Call only when holding lock.
-         */
         private void grow() {
             int oldCapacity = queue.length;
             int newCapacity = oldCapacity + (oldCapacity >> 1); // grow 50%
@@ -451,9 +403,6 @@ public class ScheduledThreadPoolExecutor
             queue = Arrays.copyOf(queue, newCapacity);
         }
 
-        /**
-         * Finds index of given object, or -1 if absent.
-         */
         private int indexOf(Object x) {
             if (x != null) {
                 if (x instanceof ScheduledFutureTask) {
@@ -571,12 +520,6 @@ public class ScheduledThreadPoolExecutor
             return offer(e);
         }
 
-        /**
-         * Performs common bookkeeping for poll and take: Replaces
-         * first element with last and sifts it down.  Call only when
-         * holding lock.
-         * @param f the task to remove and return
-         */
         private RunnableScheduledFuture<?> finishPoll(RunnableScheduledFuture<?> f) {
             int s = --size;
             RunnableScheduledFuture<?> x = queue[s];
@@ -694,10 +637,6 @@ public class ScheduledThreadPoolExecutor
             }
         }
 
-        /**
-         * Returns first element only if it is expired.
-         * Used only by drainTo.  Call only when holding lock.
-         */
         private RunnableScheduledFuture<?> peekExpired() {
             // assert lock.isHeldByCurrentThread();
             RunnableScheduledFuture<?> first = queue[0];
@@ -779,9 +718,6 @@ public class ScheduledThreadPoolExecutor
             return new Itr(Arrays.copyOf(queue, size));
         }
 
-        /**
-         * Snapshot iterator that works off copy of underlying q array.
-         */
         private class Itr implements Iterator<Runnable> {
             final RunnableScheduledFuture<?>[] array;
             int cursor = 0;     // index of next element to return

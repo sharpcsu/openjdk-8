@@ -7,11 +7,6 @@ public class Semaphore implements java.io.Serializable {
     /** All mechanics via AbstractQueuedSynchronizer subclass */
     private final Sync sync;
 
-    /**
-     * Synchronization implementation for semaphore.  Uses AQS state
-     * to represent permits. Subclassed into fair and nonfair
-     * versions.
-     */
     abstract static class Sync extends AbstractQueuedSynchronizer {
         private static final long serialVersionUID = 1192457210091910933L;
 
@@ -64,9 +59,6 @@ public class Semaphore implements java.io.Serializable {
         }
     }
 
-    /**
-     * NonFair version
-     */
     static final class NonfairSync extends Sync {
         private static final long serialVersionUID = -2694183684443567898L;
 
@@ -79,9 +71,6 @@ public class Semaphore implements java.io.Serializable {
         }
     }
 
-    /**
-     * Fair version
-     */
     static final class FairSync extends Sync {
         private static final long serialVersionUID = 2014338818796000944L;
 

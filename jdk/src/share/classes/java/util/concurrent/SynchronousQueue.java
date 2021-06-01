@@ -30,13 +30,6 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
 
     /** Dual stack */
     static final class TransferStack<E> extends Transferer<E> {
-        /*
-         * This extends Scherer-Scott dual stack algorithm, differing,
-         * among other ways, by using "covering" nodes rather than
-         * bit-marked pointers: Fulfilling operations push on marker
-         * nodes (with FULFILLING bit set in mode) to reserve a spot
-         * to match a waiting node.
-         */
 
         /* Modes for SNodes, ORed together in node fields */
         /** Node represents an unfulfilled consumer */

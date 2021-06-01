@@ -105,10 +105,6 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         extends AbstractQueuedSynchronizer
         implements Runnable
     {
-        /**
-         * This class will never be serialized, but we provide a
-         * serialVersionUID to suppress a javac warning.
-         */
         private static final long serialVersionUID = 6138294804551838833L;
 
         /** Thread this worker is running in.  Null if factory fails. */
@@ -118,10 +114,6 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         /** Per-thread task counter */
         volatile long completedTasks;
 
-        /**
-         * Creates with given first task and thread from ThreadFactory.
-         * @param firstTask the first task (null if none)
-         */
         Worker(Runnable firstTask) {
             setState(-1); // inhibit interrupts until runWorker
             this.firstTask = firstTask;
@@ -176,13 +168,6 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * Methods for setting control state
      */
 
-    /**
-     * Transitions runState to given target, or leaves it alone if
-     * already at least the given target.
-     *
-     * @param targetState the desired state, either SHUTDOWN or STOP
-     *        (but not TIDYING or TERMINATED -- use tryTerminate for that)
-     */
     private void advanceRunState(int targetState) {
         for (;;) {
             int c = ctl.get();
@@ -242,10 +227,6 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
         }
     }
 
-    /**
-     * Interrupts all threads, even if active. Ignores SecurityExceptions
-     * (in which case some threads may remain uninterrupted).
-     */
     private void interruptWorkers() {
         final ReentrantLock mainLock = this.mainLock;
         mainLock.lock();
@@ -290,28 +271,13 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
      * ScheduledThreadPoolExecutor
      */
 
-    /**
-     * Invokes the rejected execution handler for the given command.
-     * Package-protected for use by ScheduledThreadPoolExecutor.
-     */
     final void reject(Runnable command) {
         handler.rejectedExecution(command, this);
     }
 
-    /**
-     * Performs any further cleanup following run state transition on
-     * invocation of shutdown.  A no-op here, but used by
-     * ScheduledThreadPoolExecutor to cancel delayed tasks.
-     */
     void onShutdown() {
     }
 
-    /**
-     * State check needed by ScheduledThreadPoolExecutor to
-     * enable running tasks during shutdown.
-     *
-     * @param shutdownOK true if should return true if SHUTDOWN
-     */
     final boolean isRunningOrShutdown(boolean shutdownOK) {
         int rs = runStateOf(ctl.get());
         return rs == RUNNING || (rs == SHUTDOWN && shutdownOK);

@@ -1,38 +1,3 @@
-/*
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
- */
-
-/*
- * This file is available under and governed by the GNU General Public
- * License version 2 only, as published by the Free Software Foundation.
- * However, the following notice accompanied the original version of this
- * file:
- *
- * Written by Doug Lea with assistance from members of JCP JSR-166
- * Expert Group and released to the public domain, as explained at
- * http://creativecommons.org/publicdomain/zero/1.0/
- */
-
 package java.util.concurrent;
 import java.util.Collection;
 import java.util.Set;
@@ -43,56 +8,6 @@ import java.util.Spliterators;
 import java.util.function.Predicate;
 import java.util.function.Consumer;
 
-/**
- * A {@link java.util.Set} that uses an internal {@link CopyOnWriteArrayList}
- * for all of its operations.  Thus, it shares the same basic properties:
- * <ul>
- *  <li>It is best suited for applications in which set sizes generally
- *       stay small, read-only operations
- *       vastly outnumber mutative operations, and you need
- *       to prevent interference among threads during traversal.
- *  <li>It is thread-safe.
- *  <li>Mutative operations ({@code add}, {@code set}, {@code remove}, etc.)
- *      are expensive since they usually entail copying the entire underlying
- *      array.
- *  <li>Iterators do not support the mutative {@code remove} operation.
- *  <li>Traversal via iterators is fast and cannot encounter
- *      interference from other threads. Iterators rely on
- *      unchanging snapshots of the array at the time the iterators were
- *      constructed.
- * </ul>
- *
- * <p><b>Sample Usage.</b> The following code sketch uses a
- * copy-on-write set to maintain a set of Handler objects that
- * perform some action upon state updates.
- *
- *  <pre> {@code
- * class Handler { void handle(); ... }
- *
- * class X {
- *   private final CopyOnWriteArraySet<Handler> handlers
- *     = new CopyOnWriteArraySet<Handler>();
- *   public void addHandler(Handler h) { handlers.add(h); }
- *
- *   private long internalState;
- *   private synchronized void changeState() { internalState = ...; }
- *
- *   public void update() {
- *     changeState();
- *     for (Handler handler : handlers)
- *       handler.handle();
- *   }
- * }}</pre>
- *
- * <p>This class is a member of the
- * <a href="{@docRoot}/../technotes/guides/collections/index.html">
- * Java Collections Framework</a>.
- *
- * @see CopyOnWriteArrayList
- * @since 1.5
- * @author Doug Lea
- * @param <E> the type of elements held in this collection
- */
 public class CopyOnWriteArraySet<E> extends AbstractSet<E>
         implements java.io.Serializable {
     private static final long serialVersionUID = 5457747651344034263L;

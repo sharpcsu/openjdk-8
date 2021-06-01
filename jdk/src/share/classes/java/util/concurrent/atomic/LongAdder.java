@@ -9,17 +9,9 @@ import java.io.Serializable;
 public class LongAdder extends Striped64 implements Serializable {
     private static final long serialVersionUID = 7249069246863182397L;
 
-    /**
-     * Creates a new adder with initial sum of zero.
-     */
     public LongAdder() {
     }
 
-    /**
-     * Adds the given value.
-     *
-     * @param x the value to add
-     */
     public void add(long x) {
         Cell[] as; long b, v; int m; Cell a;
         if ((as = cells) != null || !casBase(b = base, b + x)) {
@@ -31,16 +23,10 @@ public class LongAdder extends Striped64 implements Serializable {
         }
     }
 
-    /**
-     * Equivalent to {@code add(1)}.
-     */
     public void increment() {
         add(1L);
     }
 
-    /**
-     * Equivalent to {@code add(-1)}.
-     */
     public void decrement() {
         add(-1L);
     }
